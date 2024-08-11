@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Blinker" Id="{8e5b29d9-5298-4e40-af5f-a7868ce84bdc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Blinker
+VAR_INPUT
+	bStartBlinker : BOOL; //bool variable that starts the blinker
+END_VAR
+VAR_OUTPUT
+	bStatus : BOOL; //bool variable that transfers the blinkers output status to the light
+END_VAR
+VAR
+	fbTimer1 : TON; //timers for every on/off state
+	fbTimer2 : TON;
+	fbTimer3 : TON;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bStartBlinker THEN // if the blinker starts execute
+	
+fbTimer2.IN := TRUE; //starts the time
+	IF fbTimer2.Q THEN
+		bStatus := FALSE; //sets the light to off
+		fbTimer1.IN := TRUE; //starts the new timer
+	END_IF
+
+	IF fbTimer1.Q THEN
+		bStatus := TRUE; //sets the light to on
+		fbTimer3.IN := TRUE; //turns the reset timer
+	END_IF
+	
+	IF fbTimer3.Q THEN
+		fbTimer1.IN := FALSE; //resets all the timers
+		fbTimer2.IN := FALSE;
+		fbTimer3.IN := FALSE;
+	END_IF
+END_IF
+fbTimer1(PT := T#15MS); //timers for the on/off states
+fbTimer2(PT := T#15MS);
+fbTimer3(PT := T#15MS);]]></ST>
+    </Implementation>
+    <LineIds Name="Blinker">
+      <LineId Id="24" Count="2" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="31" Count="1" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="36" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

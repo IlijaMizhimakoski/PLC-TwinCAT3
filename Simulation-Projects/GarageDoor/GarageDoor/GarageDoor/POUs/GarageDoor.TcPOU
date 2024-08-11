@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="GarageDoor" Id="{73ceeb09-c68d-4e8a-b7f3-60ed11bd254d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM GarageDoor
+VAR
+	bActuationButton AT %I* : BOOL; //actuation button connected through visualization
+	bOpenSensor AT %Q* : BOOL;
+	bClosedSensor AT %Q* : BOOL; //sensor conected to lights 
+	bDriveOverloadSensor : BOOL; //sensor that indicates if there is an error
+	bLightForMotion : BOOL; // light that turns on if the door is in motion
+	fbGarage : OpenCloseGarage;
+	bVisualizationOpenClose : BOOL;
+	bPauseLight AT %Q* : BOOL; //light that blinks if the door is paused
+	bErrorButton AT %I* : BOOL; //button that puts the door in error
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbGarage.bActuationProgram := bActuationButton; //we activate the garage
+
+bOpenSensor := fbGarage.bDoorOpen;
+bClosedSensor := fbGarage.bDoorClosed;
+bDriveOverloadSensor := fbGarage.bDriveOverload; //we set the sensors
+
+bLightForMotion := fbGarage.bLight;
+bVisualizationOpenClose := fbGarage.bVisualization;
+
+
+bPauseLight := fbGarage.bLightForPause;
+
+fbGarage.bError := bErrorButton;
+
+
+
+fbGarage();
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="GarageDoor">
+      <LineId Id="5" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="19" Count="1" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="15" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

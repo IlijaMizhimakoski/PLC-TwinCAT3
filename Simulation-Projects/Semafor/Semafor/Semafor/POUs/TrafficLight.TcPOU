@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="TrafficLight" Id="{2d39c46e-01f1-427b-842b-b95cace55462}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM TrafficLight
+VAR
+	fbTraffic : Traffic; //declaring the function block in the program
+	
+	iRedColor : INT;  //integers connected with the hmi that control how much time we input
+	iYellowColor : INT;
+	iGreenColor : INT; 
+	
+	bRedLight : BOOL; //bool variables that turn the lights on/off through the hmi
+	bYellowLight : BOOL;
+	bGreenLight : BOOL;
+	
+	bTurnOn : BOOL; //bool variable that turns the traffic light on/off
+	
+	bTempActive : BOOL;	// bool variable that sets/resets the time inserted by the user through hmi
+	bTextError : BOOL; //bool variable that makes the textbox for error visible/invisible
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbTraffic.iRedIn := iRedColor; //inputing the time durations in the function block's inputs
+fbTraffic.iYellowIn := iYellowColor;
+fbTraffic.iGreenIn := iGreenColor;
+
+fbTraffic.bActivate := bTempActive; //activating the input for the time duration status
+
+fbTraffic.bStart := bTurnOn; //inputing the status of the traffic light (on/off)
+
+bTextError := fbTraffic.bError;
+
+bRedLight := fbTraffic.bRed; //the bool variables take the status for the lights and switch them on/off accordingly
+bYellowLight := fbTraffic.bYellow;
+bGreenLight := fbTraffic.bGreen;
+
+fbTraffic(); // calling the function block
+	
+]]></ST>
+    </Implementation>
+    <LineIds Name="TrafficLight">
+      <LineId Id="152" Count="0" />
+      <LineId Id="154" Count="1" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="173" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="139" Count="1" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="112" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

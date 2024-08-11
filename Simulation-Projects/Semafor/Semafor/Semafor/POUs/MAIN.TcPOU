@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{d7b94376-8469-4017-9d71-930b5cb4c393}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR	
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TrafficLight(); // calling the function
+]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="145" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

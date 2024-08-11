@@ -1,0 +1,306 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="OpenCloseGarage" Id="{729de886-c8a7-444c-9b8a-a55b37bcaac6}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK OpenCloseGarage
+VAR_INPUT
+	bActuationProgram : BOOL; //the input we give through the interfac
+	bError : BOOL; //light that paused the door
+END_VAR
+VAR_OUTPUT
+	bLight : BOOL; //garage light that turns on if the garage is opening or closing (blinks if there is an error or the garage failed to open/close
+	bDoorOpen : BOOL; //sensor that indicates wheather or not the garage door is opened
+	bDoorClosed : BOOL; //sensor that indicate wheather or not the garage is closed
+	bDriveOverload : BOOL; //sensor that indicates if there is an error or if the garage takes too log to open/closLight
+	bLightForPause : BOOL;
+	bVisualization : BOOL; //bool varable for visual effects
+END_VAR
+VAR
+	iState : UDINT; //states variable which we use to go through states
+	fbOpen : TON; //time that opens the door
+	fbClose : TON; //timer that closes the door
+	fbInitial : R_TRIG; //trigger for setting the initial position of the door to closed
+	bInitialActivate : BOOL; //bool variable that activates the initial trigger
+	fbBlink : Blinker;
+	bActuation : BOOL; //actuation button which closes/opens the door
+	
+	bTempOp : BOOL; //temp open variable, helps in the error state
+	bTempCls : BOOL; //temp closed variable,helps in the error state
+	
+	fbActivate : R_TRIG; // trigger for activation
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bInitialActivate := TRUE; //we close the door at the start
+fbInitial(CLK := TRUE);
+IF fbInitial.Q THEN
+	bDoorClosed := TRUE; //we have set the door to closed at the start (only activates the first time we run the program
+END_IF
+
+CASE iState OF
+	0:
+		fbActivate(CLK := bActuationProgram);
+		IF fbActivate.Q THEN
+			bActuation := TRUE;
+		END_IF
+		IF bActuation THEN
+			iState := 10; //if we click the button go to the next state and check it's state
+		END_IF
+	5: //forgot to turn off actuation added an extra state
+		bActuation := FALSE;
+		iState := 0; //return to the first state	
+	10:
+		IF bDoorOpen THEN
+			bDoorOpen := FALSE;
+			iState := 20; //if opened go to state 20
+		ELSIF bDoorClosed THEN
+			bDoorClosed := FALSE;
+			iState := 30; //if closed go to state 30
+		ELSIF bDriveOverload THEN
+			bDoorClosed := FALSE;
+			bDoorOpen := FALSE;
+			bActuation := FALSE; //we turn off the actuation button
+			iState := 50; //if there is an error go to state 40
+		END_IF
+	15:
+		bActuation := FALSE;
+		iState := 50;
+	20:	
+		fbActivate(CLK := bActuationProgram);
+		IF fbActivate.Q THEN
+			bActuation := FALSE;
+		END_IF	
+		IF bError THEN
+			iState := 15; //incase the door goes to error
+		END_IF
+		IF bActuation THEN
+			fbClose.IN := TRUE; //we start closing it
+			bLight := TRUE; //we turn the light on             
+			bTempCls := TRUE; //set the temp to true
+			IF fbClose.Q THEN //if it finished closing
+				bTempCls := FALSE; //set the temp to false
+				bDoorClosed := TRUE; //turn the closed sensor on
+				fbClose.IN := FALSE; //reset timer
+				bLight := FALSE; //turn the light off
+				iState := 5; //turn off actuation
+			END_IF
+		ELSE
+			bLightForPause := TRUE;
+			iState := 40; //if we stopped the door go to the pause state
+		END_IF
+
+			
+	30: //if the door is closed
+		fbActivate(CLK := bActuationProgram);
+		IF fbActivate.Q THEN
+			bActuation := FALSE;
+		END_IF
+		IF bError THEN
+			iState := 15; //incase the door goes to error
+		END_IF
+		IF bActuation THEN
+			fbOpen.IN := TRUE; //we start opening it
+			bLight := TRUE; //we turn the light on
+			bTempOp := TRUE;// set the temp open to true
+			IF fbOpen.Q THEN //if it finished opening
+				bTempOp := FALSE;
+				bDoorOpen := TRUE; //turn the open sensor on
+				fbOpen.IN := FALSE; //reset timer
+				bLight := FALSE; //turn the light off
+				iState := 5; //turn off actuation
+			END_IF
+		ELSE
+			bLightForPause := TRUE;
+			iState := 40; //if we paused the door go to the pause state for open
+		END_IF
+	40:
+		IF bError THEN
+			bDriveOverload := TRUE;
+			iState := 15; //incase the door goes to error
+		END_IF
+		bVisualization := TRUE;
+		fbOpen.IN := FALSE; //reset the timers
+		fbClose.IN := FALSE;
+		bDoorClosed := FALSE;
+		bDoorOpen := FALSE; //we set the door states to false
+		fbActivate(CLK := bActuationProgram);
+		IF fbActivate.Q THEN
+			bActuation := TRUE;
+			bLightForPause := FALSE; //we turn off the pause light
+		END_IF
+		IF bActuation AND bTempOp THEN //if we press the actuation button and the door was opening
+			bLight := TRUE;
+			fbClose.IN := TRUE;
+			IF fbClose.Q THEN
+				bVisualization := FALSE;
+				bDoorClosed := TRUE; //we closed the door
+ 				bLight := FALSE;
+				bTempOp := FALSE;
+				fbClose.IN := FALSE;
+				bDriveOverload := FALSE;
+				iState := 5; //turn off actuation
+			END_IF	
+		END_IF
+		IF bActuation AND bTempCls THEN //if we press the actuation button and the door was opening
+			bLight := TRUE;
+			fbOpen.IN := TRUE;
+			IF fbOpen.Q THEN
+				bVisualization := FALSE;
+				bDoorOpen := TRUE; //we opened the door
+ 				bLight := FALSE;
+				bTempCls := FALSE;
+				fbOpen.IN := FALSE;
+				bDriveOverload := FALSE;
+				iState := 5; //turn actuation off
+			END_IF	
+		END_IF
+				
+	50: //error state
+		bLight := fbBlink.bBlink; //we mak the light blink
+		fbBlink();
+		bDriveOverload := TRUE;
+		fbOpen.IN := FALSE; //reset the timers
+		fbClose.IN := FALSE;
+		bDoorClosed := FALSE;
+		bDoorOpen := FALSE; //we set the door states to false
+		bVisualization := FALSE;
+		bLightForPause := FALSE;
+		fbActivate(CLK := bActuationProgram);
+		IF fbActivate.Q THEN
+			bActuation := TRUE;
+		END_IF
+		IF bActuation AND bTempOp THEN //if we press the actuation button and the door was opening
+			bLight := TRUE;
+			fbClose.IN := TRUE;
+			bDriveOverload := FALSE;
+			IF fbClose.Q THEN
+				bDoorClosed := TRUE; //we closed the door
+ 				bLight := FALSE;
+				bTempOp := FALSE;
+				fbClose.IN := FALSE;
+				iState := 5; //turn off actuation
+			END_IF	
+		END_IF
+		IF bActuation AND bTempCls THEN //if we press the actuation button and the door was opening
+			bLight := TRUE;
+			fbOpen.IN := TRUE;
+			bDriveOverload := FALSE;
+			IF fbOpen.Q THEN
+				bDoorOpen := TRUE; //we opened the door
+ 				bLight := FALSE;
+				bTempCls := FALSE;
+				fbOpen.IN := FALSE;
+				iState := 5; //turn actuation off
+			END_IF	
+		END_IF
+END_CASE
+
+fbOpen(PT := T#7000MS);
+fbClose(PT := T#7000MS);
+]]></ST>
+    </Implementation>
+    <LineIds Name="OpenCloseGarage">
+      <LineId Id="27" Count="5" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="153" Count="2" />
+      <LineId Id="22" Count="2" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="467" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="468" Count="0" />
+      <LineId Id="38" Count="1" />
+      <LineId Id="143" Count="1" />
+      <LineId Id="412" Count="0" />
+      <LineId Id="40" Count="1" />
+      <LineId Id="427" Count="2" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="157" Count="2" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="414" Count="2" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="56" Count="1" />
+      <LineId Id="226" Count="0" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="161" Count="2" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="419" Count="1" />
+      <LineId Id="418" Count="0" />
+      <LineId Id="61" Count="2" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="66" Count="1" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="68" Count="2" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="422" Count="0" />
+      <LineId Id="438" Count="0" />
+      <LineId Id="423" Count="0" />
+      <LineId Id="421" Count="0" />
+      <LineId Id="379" Count="0" />
+      <LineId Id="375" Count="2" />
+      <LineId Id="371" Count="0" />
+      <LineId Id="344" Count="2" />
+      <LineId Id="374" Count="0" />
+      <LineId Id="347" Count="4" />
+      <LineId Id="380" Count="0" />
+      <LineId Id="352" Count="11" />
+      <LineId Id="381" Count="0" />
+      <LineId Id="364" Count="6" />
+      <LineId Id="343" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="108" Count="1" />
+      <LineId Id="115" Count="1" />
+      <LineId Id="432" Count="1" />
+      <LineId Id="165" Count="2" />
+      <LineId Id="164" Count="0" />
+      <LineId Id="97" Count="1" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="431" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="113" Count="1" />
+      <LineId Id="117" Count="0" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="128" Count="0" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="120" Count="2" />
+      <LineId Id="430" Count="0" />
+      <LineId Id="123" Count="3" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="131" Count="0" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="205" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

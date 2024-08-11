@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Reservoir" Id="{3baf05ff-c014-4d1e-aa96-04828a5fe1b5}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Reservoir
+VAR
+	fbLevelCtrl : LevelControl;
+	bLowLevelAlarm : BOOL;
+	bHighLevelAlarm : BOOL;
+	
+	bResetButton : BOOL;
+	bStartButton : BOOL;
+	bStopButton : BOOL;
+	
+	bPumpLight : BOOL;
+	bAgitatorLight : BOOL;
+	bSolenoidALight : BOOL;
+	bSolenoidBLight : BOOL;
+	
+	rSensorInput : REAL;
+	
+	rPumpOutput : LREAL;
+	rAgitatorOutput : LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bLowLevelAlarm := fbLevelCtrl.bLowLevel;
+bHighLevelAlarm := fbLevelCtrl.bHighLevel;
+
+fbLevelCtrl.bStart := bStartButton;
+fbLevelCtrl.bStop := bStopButton;
+fbLevelCtrl.bReset := bResetButton;
+
+bPumpLight := fbLevelCtrl.bPump;
+bAgitatorLight := fbLevelCtrl.bAgitator;
+bSolenoidALight := fbLevelCtrl.bSolenoidA;
+bSolenoidBLight := fbLevelCtrl.bSolenoidB;
+
+fbLevelCtrl.rWaterLevel := rSensorInput;
+
+rPumpOutput := fbLevelCtrl.rPumpPos;
+rAgitatorOutput := fbLevelCtrl.rAgitatorPos;
+
+
+fbLevelCtrl();]]></ST>
+    </Implementation>
+    <LineIds Name="Reservoir">
+      <LineId Id="7" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="26" Count="1" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="30" Count="2" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="8" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

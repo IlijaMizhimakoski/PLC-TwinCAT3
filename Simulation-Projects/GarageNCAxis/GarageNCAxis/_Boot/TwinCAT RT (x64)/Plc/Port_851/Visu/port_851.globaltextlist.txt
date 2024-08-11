@@ -1,0 +1,8 @@
+Id;Default
+596;Actuation
+448;Actuator position
+961;Closed
+917;Drive Overload
+5;Opened
+837;Paused
+345;Simulate Error

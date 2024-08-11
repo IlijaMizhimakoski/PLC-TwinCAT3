@@ -1,0 +1,199 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Traffic" Id="{977cc258-7c17-42d3-baa3-28a6c2396140}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Traffic
+VAR_INPUT	
+	bStart : BOOL; //bool variable thats connected with the traffic light status in the program
+
+	iRedIn : INT; //integer variables connected with the time duration integers in the program
+	iYellowIn : INT;
+	iGreenIn : INT;
+	iTimeGreenNew : INT;
+	
+	bActivate : BOOL;	// bool variable that sets the time duration into the program	
+END_VAR
+VAR_OUTPUT
+	bRed : BOOL;  // bool variables which output the state of the lights (on/off)
+	bYellow : BOOL;
+	bGreen : BOOL;
+	
+	bError : BOOL;	 //error bool variables if true makes the error invisible if false makes it visible	
+END_VAR
+VAR
+	fbTimerSt : TON; //timers for every light time duration
+	fbTimerRed : TON; 
+	fbTimerYR : TON; 
+	fbTimerGreen : TON;
+	fbTimerYellow : TON; 
+	fbTimerReset : TON; 
+	fbTimerBlink : TON;
+	
+	fbBlinker : Blinker; //blinker function block, makes the green light blink
+	
+	fbTrigger : R_TRIG; //trigger for setting the values (so it doesn't accumuate multiplication)
+	
+	fbMsgTrigger : R_TRIG; //trigger for a pop up msg
+	
+	fbMsgTrigger1 : R_TRIG; //trigger for green error output
+	
+	tTimeRed : TIME; //time variables for the timers
+	tTimeYellow : TIME;
+	tTimeGreen : TIME;	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+IF iRedIn > iYellowIn AND iGreenIn > iYellowIn AND iGreenIn > 3 THEN //checking if yellow's time duration is greater or not than the other time durations
+	fbMsgTrigger(CLK := FALSE); //sets the trigger clk to false for the pop up msg
+	fbMsgTrigger1(CLK := FALSE); //sets the trigger1 clk to false for the pop up msg
+	bError := TRUE; //sets the error to true (invisible)
+	fbTrigger(CLK := bActivate); //activates the trigger
+	IF fbTrigger.Q THEN
+		iTimeGreenNew := (iGreenIn * 1000) - 3000; //substracting the blinking value for green
+		tTimeRed := INT_TO_TIME(iRedIn*1000); //converting the integer values to time values
+		tTimeYellow := INT_TO_TIME(iYellowIn*1000);
+		tTimeGreen := INT_TO_TIME(iTimeGreenNew);
+	END_IF
+	
+	IF bStart THEN // we check whether the traffic light is on/off
+	
+		fbTimerSt.IN := TRUE; //the starting timer starts
+		
+		IF fbTimerSt.Q THEN   //red light is on
+			bRed := TRUE;
+			fbTimerRed.IN := TRUE; // red light timer is on
+			
+		END_IF
+		
+		IF fbTimerRed.Q THEN //yellow is on as well
+			bYellow := TRUE;
+			fbTimerYR.IN := TRUE; //timer for yellow starts		
+		END_IF
+		
+		IF fbTimerYR.Q THEN //red and yellow are off,green lights
+			bRed := FALSE;
+			bYellow := FALSE;
+			bGreen := TRUE;
+			fbTimerGreen.IN := TRUE; //timer for green starts
+			fbBlinker.bStartBlinker := TRUE; 
+			fbBlinker();		
+		END_IF
+		
+		IF fbTimerGreen.Q THEN
+			bGreen := FALSE; //green light blinks for 3.5s
+			fbTimerBlink.IN := TRUE;//timer for blinker starts
+			bGreen := fbBlinker.bStatus;			
+		END_IF
+		
+		IF fbTimerBlink.Q THEN //yellow light,green is off
+			bGreen := FALSE;
+			bYellow := TRUE;
+			fbTimerYellow.IN := TRUE; //timer for yellow starts	
+		END_IF
+		
+		IF fbTimerYellow.Q THEN	//red lights, yellow is off
+			bGreen := FALSE;
+			bYellow := FALSE;
+			bRed := TRUE;
+			fbTimerReset.IN := TRUE; //timer for reset starts	
+			fbBlinker.bStartBlinker := FALSE;		
+		END_IF
+		
+		IF fbTimerReset.Q THEN //all the timers reset for the next cicle
+			fbTimerSt.IN := FALSE;
+			fbTimerRed.IN := FALSE;
+			fbTimerYR.IN := FALSE;
+			fbTimerGreen.IN := FALSE;
+			fbTimerYellow.IN := FALSE;
+			fbTimerReset.IN := FALSE; 
+			fbTimerBlink.IN := FALSE;
+		END_IF
+		
+	END_IF
+	
+	IF NOT bStart THEN //traffic light is off (turns all lights off)
+		bRed := FALSE;
+		bYellow := FALSE;
+		bGreen := FALSE;
+	END_IF		
+	
+	fbTimerBlink(PT := T#3000MS); //timer for blinker
+	fbTimerSt(PT := T#500MS); //timer for start
+	fbTimerRed(PT := tTimeRed); //timer for red
+	fbTimerYR(PT := tTimeYellow); //timer for yellow
+	fbTimerGreen(PT := tTimeGreen); //timer for green
+	fbTimerYellow(PT := tTimeYellow); //timer for yellow 2nd cicle
+	fbTimerReset(PT := T#500MS); //timer for reseting
+ELSIF iGreenIn <= 3 THEN
+	fbMsgTrigger1(CLK := TRUE); //error message incase we input lower green value than 3s
+	IF fbMsgTrigger1.Q THEN
+		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_MSGBOX,
+				msgFmtStr := 'Please re-enter higher time duration than 3s %s',
+				strArg := 'for green!');
+	END_IF				
+ELSE
+	bError := FALSE; //if the inputs are wrong makes the error text box visible
+	fbMsgTrigger(CLK := TRUE);
+	IF fbMsgTrigger.Q THEN //dispays a pop up msg
+		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_MSGBOX,
+			msgFmtStr := 'Please re-enter the time %s',
+			strArg := 'durations!');
+	END_IF		
+END_IF	]]></ST>
+    </Implementation>
+    <LineIds Name="Traffic">
+      <LineId Id="251" Count="0" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="277" Count="0" />
+      <LineId Id="325" Count="0" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="258" Count="1" />
+      <LineId Id="314" Count="0" />
+      <LineId Id="260" Count="2" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="250" Count="0" />
+      <LineId Id="27" Count="12" />
+      <LineId Id="41" Count="7" />
+      <LineId Id="222" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="242" Count="0" />
+      <LineId Id="234" Count="0" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="245" Count="0" />
+      <LineId Id="238" Count="0" />
+      <LineId Id="236" Count="0" />
+      <LineId Id="50" Count="1" />
+      <LineId Id="214" Count="0" />
+      <LineId Id="53" Count="1" />
+      <LineId Id="56" Count="2" />
+      <LineId Id="217" Count="0" />
+      <LineId Id="59" Count="2" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="64" Count="6" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="71" Count="1" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="181" Count="0" />
+      <LineId Id="183" Count="2" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="246" Count="0" />
+      <LineId Id="96" Count="4" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="323" Count="1" />
+      <LineId Id="319" Count="1" />
+      <LineId Id="317" Count="0" />
+      <LineId Id="326" Count="0" />
+      <LineId Id="224" Count="1" />
+      <LineId Id="274" Count="0" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="269" Count="2" />
+      <LineId Id="273" Count="0" />
+      <LineId Id="226" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
