@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="TrafficLight" Id="{491add2f-d58f-404d-92ad-9e8649be39c1}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM TrafficLight
+VAR
+	fbTraffic1 : TrafficLightFB; //declaring the function block in the program
+	fbTraffic2 : TrafficLight2nd; //declaring the 2nd traffic light
+	
+	iRedColor : INT;  //integers connected with the hmi that control how much time we input (1st traffic light)
+	iYellowColor : INT;
+	iGreenColor : INT; 
+	
+	bRedLight AT %Q* : BOOL; //bool variables that turn the lights on/off through the hmi
+	bYellowLight AT %Q* : BOOL;
+	bGreenLight AT %Q* : BOOL;
+	
+	bRedLight2nd AT %Q* : BOOL; //bool variables for the lights of the 2nd traffic light
+	bYellowLight2nd : BOOL;
+	bGreenLight2nd : BOOL;
+	
+	bTurnOn AT %I* : BOOL; //bool variable that turns the traffic light on/off
+	bTurnOnVis : BOOL; //turns on the visualization
+	
+	bTextError : BOOL; //bool variable that makes the textbox for error visible/invisible
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//1st traffic light
+fbTraffic1.iRedIn := iRedColor; //inputing the integers from the hmi to the function
+fbTraffic1.iYellowIn := iYellowColor;
+fbTraffic1.iGreenIn := iGreenColor;
+
+fbTraffic1.bHardwareON := bTurnOn;
+fbTraffic1.bStart := bTurnOnVis; //inputing the status of the traffic light (on/off)
+
+bTextError := fbTraffic1.bError; //outputing the error bool vaiables
+
+bRedLight := fbTraffic1.bRed; //the bool variables take the status for the lights and switch them on/off accordingly
+bYellowLight := fbTraffic1.bYellow;
+bGreenLight := fbTraffic1.bGreen;
+
+//2nd traffic light
+fbTraffic2.iRedIn := iGreenColor; //inputing the integers from the hmi to the function
+fbTraffic2.iYellowIn := iYellowColor;
+fbTraffic2.iGreenIn := iRedColor; //we reverse the values for red and green so they are in sync and it doesn't make an error
+
+fbTraffic2.bStart := bTurnOnVis; //inputing the status of the traffic light (on/off)
+
+fbTraffic2.bHardwareON := bTurnOn; //we turn on the 2nd traffic light
+
+bTextError := fbTraffic2.bError; //same error as the 1st one
+
+bRedLight2nd := fbTraffic2.bRed; //the bool variables take the status for the lights and switch them on/off accordingly
+bYellowLight2nd := fbTraffic2.bYellow;
+bGreenLight2nd := fbTraffic2.bGreen;
+
+fbTraffic1(); // calling the function block
+fbTraffic2();]]></ST>
+    </Implementation>
+    <LineIds Name="TrafficLight">
+      <LineId Id="50" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="24" Count="8" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="58" Count="1" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="70" Count="2" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="73" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

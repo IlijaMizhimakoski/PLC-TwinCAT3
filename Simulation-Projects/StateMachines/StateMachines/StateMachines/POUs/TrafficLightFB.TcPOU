@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="TrafficLightFB" Id="{d03f7614-6541-4da0-a45e-4de51c3ae3e2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TrafficLightFB
+VAR_INPUT
+	bStart : BOOL; //bool variable thats connected with the traffic light status in the program
+
+	iRedIn : INT; //integer variables connected with the time duration integers in the program
+	iYellowIn : INT;
+	iGreenIn : INT;
+	
+	bHardwareON : BOOL; //temporary bool for on/off
+END_VAR
+VAR_OUTPUT
+	bRed : BOOL;  // bool variables which output the state of the lights (on/off)
+	bYellow : BOOL;
+	bGreen : BOOL;
+	
+	bError : BOOL;	 //error bool variable if true makes the error visible/ivisible	
+END_VAR
+VAR
+	fbTimerSt : TON; //timers for every light time duration
+	fbTimerRed : TON; 
+	fbTimerYR : TON; 
+	fbTimerGreen : TON;
+	fbTimerYellow : TON; 
+	
+	fbTemp1 : TON; //timers for blinking
+	fbTemp4 : TON;
+	
+	fbBlinker : Blinker;
+	
+		
+	iState : UDINT; //state variable to control the states
+	
+	tTimeRed : TIME; //time variables for the timers
+	tTimeYellow : TIME;
+	tTimeGreen : TIME;	
+	
+	fbHardwareTurnON : R_TRIG;
+	fbHardwareTurnOFF : TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[tTimeGreen := INT_TO_TIME(iGreenIn*1000); //coverting the integer values inputet by the user to time variables
+tTimeRed := INT_TO_TIME(iRedIn*1000+3230); 
+tTimeYellow := INT_TO_TIME(iYellowIn*1000);		
+/////////////////////////////////////////////////////
+fbHardwareTurnON(CLK := bHardwareON); //if the button is pressed turn on
+IF fbHardwareTurnON.Q THEN
+	bStart := TRUE;
+END_IF
+fbHardwareTurnOFF.IN := bHardwareON; //if you hold it for 3s turn off
+IF fbHardwareTurnOFF.Q THEN
+	bStart := FALSE;
+END_IF
+/////////////////////////////////////////////////////
+	
+CASE iState OF
+	0: //first state, checks the basic condition
+		IF iRedIn > iYellowIn AND iGreenIn > iYellowIn THEN //if the input for yellow is lower than those for green and red execute
+			IF bStart THEN
+				fbTimerSt.IN := TRUE;//we start the traffic light (set the starting timer)
+				iState := 10; //set the next state
+				bError := FALSE;
+			ELSE
+				bRed := FALSE;
+				bYellow := FALSE; //if its not started keep the lights turned off
+				bGreen := FALSE;
+				bError := FALSE;
+			END_IF			
+		ELSE
+			bError := TRUE; //otherwise show an error message
+			bYellow := fbBlinker.bBlink; //if there is an error make the yellow light blink
+			fbBlinker();
+		END_IF
+	
+	10: //red light
+		IF fbTimerSt.Q THEN //if the starting timer elapsed continue
+			bRed := TRUE; 
+			fbTimerRed.IN := TRUE;	 //we light the red and set the timer to true, also we reset the previous timer
+			fbTimerSt.IN := FALSE;
+			iState := 20; // go to the next state
+		END_IF
+	20: //yellow and red light
+		IF fbTimerRed.Q THEN
+			bYellow := TRUE;
+			fbTimerYR.IN := TRUE;
+			fbTimerRed.IN := FALSE; //we light the yellow as well, start the yellow/red timer and reset the red timer
+			iState := 30; //go to the next state
+		END_IF
+	30:// green light
+		IF fbTimerYR.Q THEN
+			bYellow := FALSE;
+			bRed := FALSE;
+			bGreen := TRUE;
+			fbTimerGreen.IN := TRUE; //we turn the red and yellow off and light the green, also we start the green timer but reset the yellow one
+			fbTimerYR.IN := FALSE;
+			iState := 40; //go to the next state
+		END_IF	
+	40:// blinker
+		IF fbTimerGreen.Q THEN
+			bGreen := FALSE;
+			fbTemp1.IN := TRUE;
+			fbTimerGreen.IN := FALSE; //we turn the green light off for a split second
+			iState := 50; //next state
+		END_IF
+	50: //blinker
+		IF fbTemp1.Q THEN
+			fbTemp4.IN := TRUE;
+			bGreen := fbBlinker.bBlink; //start the blinker on the green light
+			fbBlinker();
+			IF fbTemp4.Q THEN
+				iState := 60; //when the blinker is finished go to the next state
+			END_IF	
+		END_IF
+	60: //yellow light
+			bGreen := FALSE; 
+			bYellow := TRUE; //we turn the green light off and turn the yellow one on
+			fbTimerYellow.IN := TRUE; //we start the yellow timer and reset the last blinking timer
+			fbTemp4.IN := FALSE;
+			iState := 70; //next state	
+	70: //reset the yellow timer and go back to state 0
+		IF fbTimerYellow.Q THEN
+			bYellow := FALSE;
+			fbTimerYellow.IN := FALSE;
+			iState := 0;	
+		END_IF
+END_CASE
+
+fbHardwareTurnOFF(PT := T#3000MS);
+
+fbTemp4(PT := T#3200MS);
+
+fbTemp1(PT := T#30MS);
+fbTimerSt(PT := T#50MS); //timer for start
+fbTimerRed(PT := tTimeRed); //timer for red
+fbTimerYR(PT := tTimeYellow); //timer for yellow
+fbTimerGreen(PT := tTimeGreen); //timer for green
+fbTimerYellow(PT := tTimeYellow); //timer for yellow 2nd cicle]]></ST>
+    </Implementation>
+    <LineIds Name="TrafficLightFB">
+      <LineId Id="53" Count="3" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="430" Count="4" />
+      <LineId Id="437" Count="1" />
+      <LineId Id="423" Count="0" />
+      <LineId Id="57" Count="6" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="64" Count="3" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="68" Count="2" />
+      <LineId Id="348" Count="1" />
+      <LineId Id="71" Count="3" />
+      <LineId Id="384" Count="0" />
+      <LineId Id="76" Count="17" />
+      <LineId Id="95" Count="3" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="101" Count="1" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="253" Count="0" />
+      <LineId Id="302" Count="1" />
+      <LineId Id="298" Count="0" />
+      <LineId Id="311" Count="0" />
+      <LineId Id="309" Count="0" />
+      <LineId Id="312" Count="0" />
+      <LineId Id="299" Count="0" />
+      <LineId Id="107" Count="3" />
+      <LineId Id="263" Count="0" />
+      <LineId Id="114" Count="6" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="436" Count="0" />
+      <LineId Id="435" Count="0" />
+      <LineId Id="300" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="313" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="126" Count="3" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
