@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="ContinousSync" Id="{d492fa16-1da2-4236-b22a-fe2d8c7710c5}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK ContinousSync
+VAR_INPUT
+	bStart : BOOL; //start the jogging of the master
+	bStop : BOOL; //button to stop and reset the movement
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	iState : States;	
+	
+	rSyncPos : LREAL; //position where they sync
+	
+	fbGetSyncPos : R_TRIG; //we read the sync pos
+	fbSyncTimer : TON; //timers that control when the sync and desync start
+	fbDesyncTimer : TON;
+	
+	rActualMasterPos : LREAL; //the actual position of the master axis
+	rActualSlavePos : LREAL; //the actual position of the slave axis	
+	
+	
+	MasterAxis : AXIS_REF; //reference to the master and slave axis respectively
+	SlaveAxis : AXIS_REF;
+	
+	PowerMaster : MC_Power; //power function blocks for the master and slave
+	PowerSlave : MC_Power; 
+	
+	ResetMaster : MC_Reset; //reset function blocks for the master and slave
+	ResetSlave : MC_Reset; 
+	
+	StopMaster : MC_Stop; //stop function blocks for the master and slave
+	StopSlave : MC_Stop;
+
+	JogMaster : MC_Jog; //function block to move the master
+	
+	FlyingSaw : MC_GearInPos; //function blocks for gearing in/out
+	GearOut : MC_GearOut;
+	
+	MoveMaster : MC_MoveAbsolute;
+	MoveSlave : MC_MoveAbsolute;
+		
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE iState OF
+	States.CheckOnline: //check if the axes are turned on
+		IF PowerMaster.Enable AND PowerSlave.Enable THEN
+			iState := States.StartMaster;
+		END_IF
+		IF JogMaster.Error THEN
+			iState := States.ErrorAndReset; //if an error occurs go to the error handling state
+		END_IF
+	States.StartMaster: //start the master if the button is pressed
+		IF bStart THEN
+			JogMaster(Axis := MasterAxis,JogForward := TRUE);
+			iState := States.Synchronization;
+		END_IF
+	States.Synchronization: //start the sync process
+		fbGetSyncPos(CLK := FALSE);
+		fbSyncTimer.IN := TRUE;
+		IF fbSyncTimer.Q THEN
+			iState := States.ReadPosition;
+		END_IF
+		IF JogMaster.Error OR bStop THEN //incase an error or occurs or we stop it manually
+			iState := States.ErrorAndReset;			
+		END_IF
+	States.ReadPosition: //write sync pos
+		fbSyncTimer.IN := FALSE;
+		fbGetSyncPos(CLK := TRUE); //we read the sync pos
+		IF fbGetSyncPos.Q THEN
+			rSyncPos := rActualMasterPos + 135.0;
+			iState := States.ActivateFlyingSaw; 
+		END_IF
+		IF JogMaster.Error OR bStop THEN //incase an error or occurs or we stop it manually
+			iState := States.ErrorAndReset;			
+		END_IF
+	States.ActivateFlyingSaw: //flying saw
+		fbGetSyncPos(CLK := FALSE);
+		FlyingSaw(Master := MasterAxis,Slave := SlaveAxis,MasterSyncPosition := rSyncPos,SlaveSyncPosition := rSyncPos,Execute := TRUE);
+		fbDesyncTimer.IN := TRUE; //we start the desync timer
+		IF fbDesyncTimer.Q THEN
+			iState := States.GearOut;
+		END_IF
+		IF JogMaster.Error OR bStop THEN //incase an error or occurs or we stop it manually
+			iState := States.ErrorAndReset;			
+		END_IF
+	States.GearOut: //Gear out and stop the slave
+		fbDesyncTimer.IN := FALSE;
+		StopSlave(Axis := SlaveAxis,Deceleration := 3000,Execute := TRUE);
+		GearOut(Slave := SlaveAxis,Execute := TRUE);
+		FlyingSaw(Master := MasterAxis,Slave := SlaveAxis,Execute := FALSE);
+		IF StopSlave.Done THEN
+			iState := States.TempReset; //reset all the blocks
+		END_IF
+		IF JogMaster.Error OR bStop THEN //incase an error or occurs or we stop it manually
+			iState := States.ErrorAndReset;			
+		END_IF
+	States.TempReset: //reset gear out
+		GearOut(Slave := SlaveAxis,Execute := FALSE);
+		StopSlave(Axis := SlaveAxis,Execute := FALSE);
+		iState := States.Synchronization;
+	States.ErrorAndReset: //error and reset state
+		GearOut(Slave := SlaveAxis,Execute := TRUE);
+		StopSlave(Axis := SlaveAxis,Execute := TRUE);
+		StopMaster(Axis := SlaveAxis,Execute := TRUE);
+		fbSyncTimer.IN := FALSE;
+		fbDesyncTimer.IN := FALSE;
+		fbGetSyncPos(CLK := FALSE);
+		JogMaster(Axis := MasterAxis,JogForward := FALSE);
+		MoveMaster(Axis := MasterAxis,Execute := FALSE);
+		MoveSlave(Axis := SlaveAXis,Execute := FALSE);
+		IF JogMaster.Error OR MoveMaster.Error OR MoveSlave.Error THEN
+			ResetMaster(Axis := MasterAxis,Execute := TRUE);
+			ResetSlave(Axis := SlaveAxis,Execute := TRUE);
+		ELSE
+			iState := States.ReturnToPosition0; //return to the starting point
+		END_IF
+
+	States.ReturnToPosition0: //return to position 0
+		GearOut(Slave := SlaveAxis,Execute := FALSE);
+		StopSlave(Axis := SlaveAxis,Execute := FALSE);
+		StopMaster(Axis := SlaveAxis,Execute := FALSE);
+		ResetMaster(Axis := MasterAxis,Execute := FALSE);
+		ResetSlave(Axis := SlaveAxis,Execute := FALSE);
+		MoveMaster(Axis := MasterAxis,Position := 0,Velocity := 800,Execute := TRUE);
+		MoveSlave(Axis := SlaveAxis,Position := 0,Velocity := 800,Execute := TRUE);
+		IF MoveMaster.Done AND MoveSlave.Done THEN
+			MoveMaster(Axis := MasterAxis,Execute := FALSE);
+			MoveSlave(Axis := SlaveAxis,Execute := FALSE);
+			iState := 10; //return to the start
+		ELSIF MoveMaster.Error OR MoveSlave.Error THEN
+			iState := States.ErrorAndReset;
+		END_IF
+						
+END_CASE
+
+
+PowerMaster(Axis := MasterAxis,Enable := TRUE,Enable_Positive := TRUE,Enable_Negative := TRUE);
+PowerSlave(Axis := SlaveAxis,Enable := TRUE,Enable_Positive := TRUE,Enable_Negative := TRUE);
+
+ResetMaster(Axis := MasterAxis);
+ResetSlave(Axis := SlaveAxis);
+
+StopMaster(Axis := MasterAxis);
+StopSlave(Axis := SlaveAxis);
+
+JogMaster(Axis := MasterAxis);
+
+MoveMaster(Axis := MasterAxis);
+MoveSlave(Axis := SlaveAXis);
+
+fbSyncTimer(PT := T#4000MS);
+fbDesyncTimer(PT := T#4000MS);
+
+rActualMasterPos := MasterAxis.NcToPlc.ActPos;
+rActualSlavePos := SlaveAxis.NcToPlc.ActPos;]]></ST>
+    </Implementation>
+    <LineIds Name="ContinousSync">
+      <LineId Id="105" Count="0" />
+      <LineId Id="328" Count="10" />
+      <LineId Id="325" Count="0" />
+      <LineId Id="339" Count="0" />
+      <LineId Id="362" Count="0" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="349" Count="2" />
+      <LineId Id="427" Count="0" />
+      <LineId Id="431" Count="0" />
+      <LineId Id="429" Count="0" />
+      <LineId Id="352" Count="1" />
+      <LineId Id="358" Count="2" />
+      <LineId Id="365" Count="0" />
+      <LineId Id="361" Count="0" />
+      <LineId Id="433" Count="1" />
+      <LineId Id="432" Count="0" />
+      <LineId Id="366" Count="0" />
+      <LineId Id="394" Count="0" />
+      <LineId Id="368" Count="1" />
+      <LineId Id="367" Count="0" />
+      <LineId Id="370" Count="1" />
+      <LineId Id="436" Count="1" />
+      <LineId Id="435" Count="0" />
+      <LineId Id="372" Count="3" />
+      <LineId Id="377" Count="0" />
+      <LineId Id="383" Count="2" />
+      <LineId Id="439" Count="1" />
+      <LineId Id="438" Count="0" />
+      <LineId Id="380" Count="2" />
+      <LineId Id="386" Count="0" />
+      <LineId Id="379" Count="0" />
+      <LineId Id="376" Count="0" />
+      <LineId Id="389" Count="4" />
+      <LineId Id="395" Count="0" />
+      <LineId Id="408" Count="1" />
+      <LineId Id="482" Count="1" />
+      <LineId Id="485" Count="2" />
+      <LineId Id="484" Count="0" />
+      <LineId Id="400" Count="0" />
+      <LineId Id="410" Count="0" />
+      <LineId Id="412" Count="1" />
+      <LineId Id="411" Count="0" />
+      <LineId Id="416" Count="5" />
+      <LineId Id="423" Count="0" />
+      <LineId Id="426" Count="0" />
+      <LineId Id="424" Count="1" />
+      <LineId Id="422" Count="0" />
+      <LineId Id="414" Count="0" />
+      <LineId Id="326" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="314" Count="8" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="405" Count="0" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="406" Count="0" />
+      <LineId Id="387" Count="0" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="346" Count="0" />
+      <LineId Id="388" Count="0" />
+      <LineId Id="323" Count="0" />
+      <LineId Id="343" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="States" Id="{786aba80-fb68-4acc-9ed7-552e09db183d}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE States :
+(
+	CheckOnline := 0,
+	StartMaster := 10,
+	Synchronization := 20,
+	ReadPosition := 30,
+	ActivateFlyingSaw := 40,
+	GearOut := 50,
+	TempReset := 60,
+	ErrorAndReset := 999,
+	ReturnToPosition0 := 1000
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

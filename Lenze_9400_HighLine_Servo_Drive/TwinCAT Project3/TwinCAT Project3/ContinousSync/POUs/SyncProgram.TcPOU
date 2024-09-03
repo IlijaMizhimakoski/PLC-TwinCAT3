@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="SyncProgram" Id="{69812283-6bdf-46df-860b-8389d106e3be}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM SyncProgram
+VAR
+	fbAxisSync : ContinousSync;
+	bStartButton : BOOL;
+	bStopButton : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbAxisSync.bStart := bStartButton;
+fbAxisSync.bStop := bStopButton;
+
+fbAxisSync();]]></ST>
+    </Implementation>
+    <LineIds Name="SyncProgram">
+      <LineId Id="12" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

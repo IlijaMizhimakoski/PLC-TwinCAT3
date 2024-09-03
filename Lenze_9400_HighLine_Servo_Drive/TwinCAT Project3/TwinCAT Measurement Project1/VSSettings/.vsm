@@ -1,0 +1,77 @@
+<Node>
+  <Title>TwinCAT Measurement Project1</Title>
+  <Expanded>False</Expanded>
+  <FileName></FileName>
+  <Children>
+    <Node>
+      <Title>YT Scope Project</Title>
+      <Expanded>True</Expanded>
+      <FileName>C:\Users\ilijam\Documents\TcXaeShell\TwinCAT Project3\TwinCAT Measurement Project1\YT Scope Project.tcscopex</FileName>
+      <Children>
+        <Node>
+          <Title>DataPool</Title>
+          <Expanded>True</Expanded>
+          <FileName></FileName>
+          <Children>
+            <Node>
+              <Title>ActAcc</Title>
+              <Expanded>False</Expanded>
+              <FileName></FileName>
+              <Children />
+            </Node>
+            <Node>
+              <Title>ActAcc (1)</Title>
+              <Expanded>False</Expanded>
+              <FileName></FileName>
+              <Children />
+            </Node>
+            <Node>
+              <Title>ActVelo</Title>
+              <Expanded>False</Expanded>
+              <FileName></FileName>
+              <Children />
+            </Node>
+            <Node>
+              <Title>ActVelo (1)</Title>
+              <Expanded>False</Expanded>
+              <FileName></FileName>
+              <Children />
+            </Node>
+          </Children>
+        </Node>
+        <Node>
+          <Title>YT Chart</Title>
+          <Expanded>True</Expanded>
+          <FileName></FileName>
+          <Children>
+            <Node>
+              <Title>Axis Group (1)</Title>
+              <Expanded>True</Expanded>
+              <FileName></FileName>
+              <Children>
+                <Node>
+                  <Title>Velocity Master</Title>
+                  <Expanded>False</Expanded>
+                  <FileName></FileName>
+                  <Children />
+                </Node>
+                <Node>
+                  <Title>Velocity Slave</Title>
+                  <Expanded>False</Expanded>
+                  <FileName></FileName>
+                  <Children />
+                </Node>
+              </Children>
+            </Node>
+          </Children>
+        </Node>
+        <Node>
+          <Title>Trigger</Title>
+          <Expanded>False</Expanded>
+          <FileName></FileName>
+          <Children />
+        </Node>
+      </Children>
+    </Node>
+  </Children>
+</Node>
