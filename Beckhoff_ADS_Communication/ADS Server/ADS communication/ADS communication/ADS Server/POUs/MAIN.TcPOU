@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.5">
+  <POU Name="MAIN" Id="{d3b31cf6-60d9-4035-935f-6c30078b24ff}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	bRecivedRequest : BOOL; //we recive the request
+	bAnswerTheRequest : BOOL; //we decide whether or not we accept the request
+	bRequestIndicator : BOOL; //the use of this variable is for indication in the visualization
+	rWrittenValue : LREAL; //we get the new value written
+	rRequestedValue : LREAL;
+	bAccept : BOOL; //button to accept the request
+	bDeny : BOOL; //button to deny the request
+	iPositionMotor : DINT; //the position of the motor
+	bReadPositionButton : BOOL;
+	
+	iState : UINT;
+	
+	fbResetRequest : TON;
+	fbReadRequestedValue : ADSREAD;
+	fbReadPositionValue : ADSREAD; //reading the position of the motor from the master PLC
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE iState OF
+	0: //wait for the request
+		IF bRecivedRequest THEN
+			iState := 10;
+		END_IF
+	10: //accept or deny the request
+		IF bAccept THEN
+			bAnswerTheRequest := TRUE;
+			bRecivedRequest := FALSE;
+			iState := 20;
+		ELSIF bDeny THEN
+			bAnswerTheRequest := FALSE;
+			bRecivedRequest := FALSE;
+			iState := 0;
+		END_IF
+	20: //the value has been written wait 3s then reset the answer and wait for a new request
+		fbResetRequest.IN := TRUE;
+		IF fbResetRequest.Q THEN
+			bAnswerTheRequest := FALSE;
+			fbResetRequest.IN := FALSE;
+			iState := 0;
+		END_IF	
+END_CASE
+IF iState = 10 THEN
+	bRequestIndicator := TRUE;
+ELSE
+	bRequestIndicator := FALSE;
+END_IF
+fbReadRequestedValue(NetId := '10.0.20.83.1.1', //we read the requested value aand display it so the user can decide whether or not he accepts
+					 Port := 851,
+					 IDXGRP := 16#4040,
+					 IDXOFFS := 386880,
+					 LEN := SIZEOF(rRequestedValue),
+					 DESTADDR := ADR(rRequestedValue),
+					 Read := bRequestIndicator);
+
+fbReadPositionValue(NetId := '10.0.20.83.1.1',
+					Port := 851,
+					IDXGRP := 16#4040,
+					IDXOFFS := 386960,
+					LEN := SIZEOF(iPositionMotor),
+					DESTADDR := ADR(iPositionMotor),
+					Read := bReadPositionButton);
+					
+fbResetRequest(PT := T#3S);]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="10" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="30" Count="3" />
+      <LineId Id="35" Count="1" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="40" Count="1" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="44" Count="1" />
+      <LineId Id="49" Count="4" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="64" Count="1" />
+      <LineId Id="67" Count="1" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="56" Count="6" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="91" Count="4" />
+      <LineId Id="47" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

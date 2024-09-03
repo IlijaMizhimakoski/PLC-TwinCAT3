@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{45adf170-5073-471b-a64d-92e05e8b5f65}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	fbReadRequest : ADSREAD; //send request
+	fbWriteRequest : ADSWRITE; //recive answer
+	fbWriteValue : ADSWRITE; //write based on the answer
+	bRequestToWrite : BOOL; //when set to true we request to write a variable
+	bAnswerToRequest : BOOL; //we read the answer from the PLC where the process is ongoing
+	rValueToWrite : LREAL; //we write the value to the other PLC
+	
+	fbTimerToRead : TON; //timer for reading the request
+	fbTimerToReadSDO : TON; //timer for reading sdo 
+	
+	fbSdoRead : FB_EcCoeSdoRead; //sdo read function block
+	ActPosSDO : DINT; //buffer where to position value will be stored
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbTimerToRead.IN := NOT fbTimerToRead.Q; //timer to read the request
+fbTimerToReadSDO.IN := NOT fbTimerToReadSDO.Q;
+
+fbWriteRequest(NetId := '169.254.154.248.1.1', //requesting to write a value to the PLC
+		Port := 851,
+		IDXGRP := 16#4040,
+		IDXOFFS := 385000,
+		LEN := SIZEOF(bRequestToWrite),
+		SRCADDR := ADR(bRequestToWrite),
+		Write := bRequestToWrite);
+		
+fbReadRequest(NetId := '169.254.154.248.1.1', //reading the answer to the request
+	   Port := 851, 
+	   IDXGRP := 16#4040,
+	   IDXOFFS := 385008,
+	   LEN := SIZEOF(bAnswerToRequest),
+	   DESTADDR := ADR(bAnswerToRequest),
+	   Read := fbTimerToRead.Q);
+
+		
+fbWriteValue(NetId := '169.254.154.248.1.1', //writing the value after the request has been approved
+		Port := 851,
+		IDXGRP := 16#4040,
+		IDXOFFS :=447616,
+		LEN := SIZEOF(rValueToWrite),
+		SRCADDR := ADR(rValueToWrite),
+		Write := bAnswerToRequest);
+
+fbSdoRead(sNetId := '10.0.20.83.4.1', //reading the position of the motor as SDO
+		nSlaveAddr := 1001,
+		nIndex := 16#6064,
+		nSubIndex := 0,
+		cbBufLen := SIZEOF(ActPosSDO),
+		pDstBuf := ADR(ActPosSDO),
+		bExecute := fbTimerToReadSDO.Q);
+		
+fbTimerToRead(PT := T#2S);
+fbTimerToReadSDO(PT := T#500MS);]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="56" Count="0" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="50" Count="5" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="9" Count="6" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="38" Count="5" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="91" Count="5" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="111" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

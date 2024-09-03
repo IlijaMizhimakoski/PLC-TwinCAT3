@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="LenzeServoDrive" Id="{16ab6100-6021-4ab1-974d-2571f3a45cfb}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM LenzeServoDrive
+VAR
+	iSpeedPrg AT %I* : INT; // The actual speed of the motor
+	iDancerValue AT %I* : INT; // The position value of the dancer
+	bChannel12008 AT %Q* : BOOL; // Digital input channels that enables/disables the safety
+	bChannel22008 AT %Q* : BOOL;
+	Controlword AT %Q* : BYTE; // Control word of the motor used for switching it on and operating with it
+	iSetSpeed AT %Q* : INT; // Activating the speed of the motor
+	bButton : BOOL; // Button connected with the HMI that enables the movement of the motor
+	rActSpeed : LREAL; // Linearized speed of motor
+	fbLinear : SpeedOutputLinearization; // Function for linearization
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bChannel12008 := TRUE; //turning the safety off
+bChannel22008 := TRUE;
+
+iSetSpeed := 3000; //setting the speed
+
+IF bButton THEN
+	Controlword := 9; //if the button is pressed set the motor to OP state
+ELSE
+	Controlword := 0; //else turn it off (set it to ReadyToBeSwitchedON state
+END_IF
+
+fbLinear.iInputSpeed := iSpeedPrg; //linearize the speed
+rActSpeed := fbLinear.iOutputSpeed;
+fbLinear();]]></ST>
+    </Implementation>
+    <LineIds Name="LenzeServoDrive">
+      <LineId Id="13" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="40" Count="1" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="59" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="AxisSync" Id="{7371e067-e708-48d7-bfa5-824de9913399}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK AxisSync
+VAR_INPUT
+	bButton : BOOL; //button which the user can press to start the master motor
+	bResetButton : BOOL; //button to reset the axis incase an error occurs
+END_VAR
+VAR_OUTPUT
+	bSyncSensor : BOOL; //sensor that turns on a light when the sync process starts
+	rMasterPos : LREAL; //sensor that displays the position of the master
+	rSlavePos : LREAL; //sensor that displays the position of the slave
+END_VAR
+VAR
+	iState : State; 
+	
+	MasterMotor : AXIS_REF; //master motor instance
+	SlaveMotor : AXIS_REF; //slave motor instance
+	
+	PowerMaster : MC_Power; //motion function blocks for the master
+	ResetMaster : MC_Reset;
+	MoveMaster : MC_MoveAbsolute;
+	JogMaster : MC_Jog;
+	StopMaster : MC_Stop;
+	
+	PowerSlave : MC_Power; //motion function blocks for the slave
+	ResetSlave : MC_Reset;
+	MoveSlave : MC_MoveAbsolute;
+	JogSlave : MC_Jog;
+	StopSlave : MC_Stop;
+	
+	FlyingSaw : MC_GearInPos; //sync function block
+	GearOut : MC_GearOut; //gear out function block
+	
+	TimerSync : TON; //timer that gets enabled and starts the sync process
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE iState OF
+	State.CheckEnable: //we check whether the motors are ON	
+		IF PowerMaster.Enable AND PowerSlave.Enable THEN
+			iState := State.Initialize;
+		END_IF
+	State.Initialize: //initialization state (we reset the timers,reset the motion function blocks and we set the motors to position 0)	
+		TimerSync.IN := FALSE;
+		
+		StopMaster(Axis := MasterMotor,Execute := FALSE);
+		StopSlave(Axis := SlaveMotor,Execute := FALSE);
+		
+		ResetMaster(Axis := MasterMotor,Execute := FALSE);
+		ResetSlave(Axis := SlaveMotor,Execute := FALSE);
+		
+		MoveMaster(Axis := MasterMotor,Position := 0,Velocity := 100,Execute := TRUE); //move the motors to position 0
+		MoveSlave(Axis := SlaveMotor,Position := 0,Velocity := 100,Execute := TRUE);
+		
+		IF NOT MoveMaster.Busy AND NOT MoveSlave.Busy THEN
+			MoveMaster(Axis := MasterMotor,Execute := FALSE); //when we finish moving them reset the function blocks as well
+			MoveSlave(Axis := SlaveMotor,Execute := FALSE);
+			iState := State.WaitForButton;
+		END_IF		
+	State.WaitForButton: //in this state we wait for the user to start the master motor
+		IF bButton THEN
+			iState := State.StartMaster;
+		END_IF
+	State.StartMaster: //here we move the master motor to position 1440
+		IF NOT MoveMaster.Error THEN
+			MoveMaster(Axis := MasterMotor,Position := 1440,Velocity := 70,Execute := TRUE);
+			iState := State.Synchronization;
+		ELSE
+			iState := State.ErrorState; //if an error occurs go to the error state
+		END_IF
+	State.Synchronization: //start the sync process
+		TimerSync.IN := TRUE;  //enable the timer
+		IF TimerSync.Q THEN //after the ET passes activate the sync
+			bSyncSensor := TRUE; 
+			FlyingSaw(Master := MasterMotor,Slave := SlaveMotor,MasterSyncPosition := 540,SlaveSyncPosition := 540,Velocity := 500,Execute := TRUE);
+			iState := State.FinishAndStopMotors;
+		END_IF
+		IF MoveMaster.Error THEN //if an error occurs go to the error state
+			iState := State.ErrorState;
+		END_IF
+	State.FinishAndStopMotors: //when the master motor reaches the desired position stop the motors and go to the ger out state
+		FlyingSaw(Master := MasterMotor,Slave := SlaveMotor,Execute := FALSE); //reset this function block
+		IF MoveMaster.Done THEN
+			StopMaster(Axis := MasterMotor,Deceleration := 300,Execute := TRUE);
+			MoveMaster(Axis := MasterMotor,Execute := FALSE);
+			bSyncSensor := FALSE;
+			iState := State.GearOut;
+		ELSIF MoveMaster.Error THEN //if an error occurs go to the error handling state
+			iState := State.ErrorState;
+		END_IF
+	State.GearOut:
+		GearOut(Slave := SlaveMotor,Execute := TRUE); //we gear out the motors and reset the function block
+		IF GearOut.Done THEN
+			GearOut(Slave := SlaveMotor,Execute := FALSE);
+			iState := State.CheckEnable; //return to the start
+		END_IF
+	State.ErrorState: //error handling state
+		bSyncSensor := FALSE;
+		StopMaster(Axis := MasterMotor,Deceleration := 300,Execute := TRUE); //if an error occurs we stop the motors
+		StopSlave(Axis := SlaveMotor,Deceleration := 300,Execute := TRUE);
+		IF bResetButton	THEN //wait for the error to be resolved and if the reset button is pressed reset the motors and return to the start
+			ResetMaster(Axis := MasterMotor,Execute := TRUE);
+			ResetSlave(Axis := SlaveMotor,Execute := TRUE);
+			MoveMaster(Axis := MasterMotor,Execute := FALSE);
+			MoveSlave(Axis := SlaveMotor,Execute := FALSE);
+			iState := State.CheckEnable;
+		END_IF
+		
+END_CASE
+
+PowerMaster(Axis := MasterMotor,Enable := TRUE,Enable_Positive := TRUE,Enable_Negative := TRUE);
+ResetMaster(Axis := MasterMotor);
+MoveMaster(Axis := MasterMotor);
+JogMaster(Axis := MasterMotor);
+StopMaster(Axis := MasterMotor);
+
+PowerSlave(Axis := SlaveMotor,Enable := TRUE,Enable_Positive := TRUE,Enable_Negative := TRUE);
+ResetSlave(Axis := SlaveMotor);
+MoveSlave(Axis := SlaveMotor);
+JogSlave(Axis := SlaveMotor);
+StopSlave(Axis := SlaveMotor);
+
+rMasterPos := MasterMotor.NcToPlc.ActPos;
+rSlavePos := SlaveMotor.NcToPlc.ActPos;
+
+TimerSync(PT := T#6000MS);]]></ST>
+    </Implementation>
+    <LineIds Name="AxisSync">
+      <LineId Id="9" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="39" Count="2" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="171" Count="1" />
+      <LineId Id="94" Count="1" />
+      <LineId Id="119" Count="2" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="92" Count="1" />
+      <LineId Id="97" Count="2" />
+      <LineId Id="101" Count="1" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="46" Count="3" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="57" Count="2" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="70" Count="1" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="108" Count="2" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="73" Count="1" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="83" Count="1" />
+      <LineId Id="86" Count="1" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="111" Count="2" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="117" Count="0" />
+      <LineId Id="131" Count="1" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="31" Count="1" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="35" Count="3" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="168" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

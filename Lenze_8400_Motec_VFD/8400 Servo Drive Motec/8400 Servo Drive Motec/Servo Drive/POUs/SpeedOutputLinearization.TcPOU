@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="SpeedOutputLinearization" Id="{6883e3e6-3abf-449a-a22c-7f2c73747ef0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK SpeedOutputLinearization
+VAR_INPUT
+	iInputSpeed : INT;
+END_VAR
+VAR_OUTPUT
+	iOutputSpeed : LREAL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[iOutputSpeed := (3000.0/16384.0)*iInputSpeed;]]></ST>
+    </Implementation>
+    <LineIds Name="SpeedOutputLinearization">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

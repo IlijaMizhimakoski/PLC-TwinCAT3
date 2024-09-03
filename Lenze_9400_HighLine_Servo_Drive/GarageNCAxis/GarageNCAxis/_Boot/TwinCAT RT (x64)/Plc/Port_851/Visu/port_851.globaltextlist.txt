@@ -1,0 +1,22 @@
+Id;Default
+219;%f
+90;%i
+509;%r
+596;Actuation
+448;Actuator position
+818;Axis Position
+961;Closed
+917;Drive Overload
+130;Gear IN
+709;Gear OUT
+534;hi
+5;Opened
+837;Paused
+184;Reset Axis
+739;sda
+345;Simulate Error
+608;There seems to be an error. Please check if the controller is turned on and make sure that the 24V switch is turned on. After that make sure to reset the axis.
+819;There seems to be an error. Please check if the encoder is connected properly and make sure that the power is turned on.
+395;There seems to be an error. Please check if the encoder is connected properly and make sure that the power is turned on. After that make sure to reset the axis.
+782;There seems to be an error. Please check if the resolver is connected properly and make sure that the power is turned on. After that make sure to reset  the axis. If everything seems fine just reset the axis.
+882;There seems to be an error. Please check if the resolver is connected properly and make sure that the power is turned on. After that make sure to reset the axis.

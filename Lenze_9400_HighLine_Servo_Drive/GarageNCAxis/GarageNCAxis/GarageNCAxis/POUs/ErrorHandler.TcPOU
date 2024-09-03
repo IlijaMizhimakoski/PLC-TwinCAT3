@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="ErrorHandler" Id="{95e29c19-4959-4304-bd60-bae331969f99}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK ErrorHandler
+VAR_INPUT
+	bAxisStatus : BOOL; //checks if the axis has errors
+	iInputError : UDINT; //we get the error from the program and handle it here
+	bClickedReset : BOOL; //checks whether or not the axis got reset
+END_VAR
+VAR_OUTPUT
+	bEncoderOrPowerError : BOOL; //encoder error or power outage error
+	bControllerOr24VError : BOOL; //controller or 24V error
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF iInputError = 18000 AND bAxisStatus THEN
+	bEncoderOrPowerError := TRUE;
+	bControllerOr24VError := FALSE;
+ELSIF iInputError = 0 AND bAxisStatus THEN
+	bEncoderOrPowerError := FALSE;
+	bControllerOr24VError := TRUE;
+ELSIF iInputError = 0 AND NOT bAxisStatus THEN
+	bEncoderOrPowerError := FALSE;
+	bControllerOr24VError := FALSE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="ErrorHandler">
+      <LineId Id="9" Count="0" />
+      <LineId Id="16" Count="2" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="24" Count="2" />
+      <LineId Id="15" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

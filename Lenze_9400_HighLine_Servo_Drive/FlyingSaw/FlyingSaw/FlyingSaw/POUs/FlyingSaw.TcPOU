@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FlyingSaw" Id="{066969ca-edf5-450c-bcfd-d777d82ac11b}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM FlyingSaw
+VAR
+	fbAxisSync : AxisSync; //we initialize the function block that does all the logic
+	
+	bReset : BOOL; //bool variable connected to a button in the HMI
+	bMove : BOOL; //bool variable connected to a button in the HMI
+	
+	bSensor : BOOL; //bool variable connected to a light in the HMI (turns on when the sync process starts)
+	
+	rMasterPosition : LREAL; //LREAL variables that display the position of the motors
+	rSlavePosition : LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbAxisSync.bButton := bMove; //we connect all the variables to the variables of the function block accordingly
+fbAxisSync.bResetButton := bReset;
+
+bSensor := fbAxisSync.bSyncSensor;
+
+rMasterPosition := fbAxisSync.rMasterPos;
+rSlavePosition := fbAxisSync.rSlavePos;
+
+fbAxisSync(); //we call the funciton block]]></ST>
+    </Implementation>
+    <LineIds Name="FlyingSaw">
+      <LineId Id="13" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="24" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

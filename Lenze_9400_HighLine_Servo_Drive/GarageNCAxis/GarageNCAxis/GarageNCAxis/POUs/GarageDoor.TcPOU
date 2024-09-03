@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="GarageDoor" Id="{61d642d1-b05b-46ad-9be9-dc37a7c45005}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM GarageDoor
+VAR
+	fbMotion : MoveGarageDoor;
+	bActuationButton AT %I* : BOOL; //button that we control through visualization
+	bErrorButton AT %I* : BOOL; //button for simulating error
+	bDoorOpened : BOOL; //sensor for open door
+	bDoorClosed : BOOL; //sensor for close door
+	bDoorDriveOverload : BOOL; //sensor for the overload of the door
+	bDoorPaused : BOOL; //sensor for pausing the door
+	bMotionLight : BOOL; //light that indicates there is motion
+	bResetButton : BOOL; //button used to reset the error state
+	fPosition : LREAL; //shows the position of the door
+	
+	bTest1 : BOOL;
+	bTest2 : BOOL;
+	bTest3 : BOOL;
+	
+	bTest4 : BOOL;
+	bTest5 : BOOL;
+	
+	bPauseVis : BOOL;
+	bErrorVis : BOOL;
+	
+	bEncOrPwrErr : BOOL; //encoder or power outage error
+	bCtrOr24VErr : BOOL; //controller or 24V error
+	
+	bGearingButton : BOOL;
+	
+	bAxisMovement : BOOL;
+	
+	rGearRatio : REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbMotion.bActuationProgram := bActuationButton;
+fbMotion.bError := bErrorButton;
+fbMotion.bReset := bResetButton;
+
+bDoorOpened := fbMotion.bOpened;
+bDoorClosed := fbMotion.bClosed;
+bDoorDriveOverload := fbMotion.bDriveOverload;
+bDoorPaused := fbMotion.bPaused;
+bMotionLight := fbMotion.bLight;
+
+fPosition := fbMotion.fActPos;
+
+bTest1 := fbMotion.bVis1O;
+bTest2 := fbMotion.bVis2O;
+bTest3 := fbMotion.bVis3O;
+
+bTest4 := fbMotion.bVis1C;
+bTest5 := fbMotion.bVis2C;
+
+bPauseVis := fbMotion.bPauseImg;
+bErrorVis := fbMotion.bErrorImg;
+
+bEncOrPwrErr := fbMotion.bEncoderOrPowerErr;
+bCtrOr24VErr := fbMotion.bController24VErr;
+
+fbMotion.bGearButton := bGearingButton;
+
+bAxisMovement := fbMotion.bAxisBusy;
+
+fbMotion.rRatioInput := rGearRatio;
+
+fbMotion();
+]]></ST>
+    </Implementation>
+    <LineIds Name="GarageDoor">
+      <LineId Id="7" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="35" Count="3" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="8" Count="2" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="58" Count="2" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="152" Count="0" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="90" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
